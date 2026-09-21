@@ -27,12 +27,16 @@ def download_offline_song(
             detail=f"Could not download audio stream for '{title}' by '{artist}'",
         )
 
+    is_preview = result.get("is_preview", False)
     return FileResponse(
         path=result["file_path"],
         media_type=result["media_type"],
         filename=result["filename"],
         headers={
-            "Content-Disposition": f'attachment; filename="{result["filename"]}"'
+            "Content-Disposition": f'attachment; filename="{result["filename"]}"',
+            "X-Audio-Type": "preview" if is_preview else "full",
+            "X-Audio-Size": str(result.get("file_size", 0)),
+            "Access-Control-Expose-Headers": "X-Audio-Type, X-Audio-Size, Content-Disposition",
         },
     )
 

@@ -128,7 +128,7 @@ class DownloadService:
         # 1. Check if already downloaded by youtube_id
         if youtube_id:
             vid_files = glob.glob(os.path.join(self.download_dir, f"{glob.escape(youtube_id)}.*"))
-            if vid_files and os.path.getsize(vid_files[0]) > 20:
+            if vid_files and os.path.getsize(vid_files[0]) > 2_000_000:
                 ext = os.path.splitext(vid_files[0])[1]
                 return {
                     "file_path": vid_files[0],
@@ -137,13 +137,14 @@ class DownloadService:
                     "video_id": youtube_id,
                     "media_type": "audio/mp4" if ext in [".m4a", ".mp4"] else "audio/webm",
                     "cached": True,
+                    "is_preview": False,
                 }
 
-        # Check existing files matching clean_name
+        # Check existing files matching clean_name (must be > 2 MB to be a genuine full song)
         existing_matches = glob.glob(os.path.join(self.download_dir, f"{glob.escape(clean_name)}.*"))
         for ef in existing_matches:
             sz = os.path.getsize(ef)
-            if sz > 20000:
+            if sz >= 2_000_000:
                 ext = os.path.splitext(ef)[1]
                 return {
                     "file_path": ef,
@@ -152,9 +153,11 @@ class DownloadService:
                     "video_id": youtube_id or "cached",
                     "media_type": "audio/mp4" if ext in [".m4a", ".mp4"] else "audio/webm",
                     "cached": True,
+                    "is_preview": False,
                 }
-            elif sz <= 20000 and not any(k in ef for k in ["test_vid", "dummy"]):
+            elif sz < 2_000_000 and not any(k in ef for k in ["test_vid", "dummy"]):
                 try:
+                    # Clean up old sub-2MB preview stubs so full song can download
                     os.remove(ef)
                 except Exception:
                     pass
@@ -176,15 +179,16 @@ class DownloadService:
             else f"ytsearch1:{artist} - {title} official audio"
         )
         ydl_opts = {
-            "format": "140/ba[ext=m4a]/ba/b",
+            "format": "ba/b",
             "outtmpl": os.path.join(self.download_dir, f"{clean_name}.%(ext)s"),
             "quiet": True,
             "no_warnings": True,
             "noplaylist": True,
-            "socket_timeout": 20,
+            "socket_timeout": 15,
+            "js_runtimes": {"node": {}},
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["ios", "android", "mweb", "tv_embedded"]
+                    "player_client": ["android", "ios", "mweb", "tv_embedded"]
                 }
             },
         }
@@ -206,11 +210,11 @@ class DownloadService:
             except Exception as e2:
                 logger.error(f"Fallback download attempt failed for '{clean_name}': {e2}")
 
-        # 3. Locate downloaded full song file
+        # 3. Locate downloaded full song file (minimum 1.5 MB)
         matches = glob.glob(os.path.join(self.download_dir, f"{glob.escape(clean_name)}.*"))
         for m in matches:
             sz = os.path.getsize(m)
-            if sz > 50000:
+            if sz >= 1_500_000:
                 ext = os.path.splitext(m)[1]
                 return {
                     "file_path": m,
@@ -219,10 +223,11 @@ class DownloadService:
                     "video_id": video_id or "full_song",
                     "media_type": "audio/mp4" if ext in [".m4a", ".mp4"] else "audio/webm",
                     "cached": False,
+                    "is_preview": False,
                 }
 
         # 4. Cloud Datacenter Fallback:
-        # If YouTube blocks cloud datacenter IPs from running yt-dlp, download direct AAC stream
+        # If YouTube blocks cloud datacenter IPs from running yt-dlp, download direct stream
         fallback_stream = preview_url or info.get("preview_url")
         if not fallback_stream:
             try:
@@ -239,21 +244,23 @@ class DownloadService:
         if fallback_stream:
             try:
                 logger.info(f"Downloading direct stream fallback for '{clean_name}' from {fallback_stream[:60]}...")
+                preview_dest = os.path.join(self.download_dir, f"{clean_name}.preview.m4a")
                 r = requests.get(fallback_stream, timeout=15, stream=True)
                 if r.status_code == 200:
-                    with open(dest_m4a, "wb") as f:
+                    with open(preview_dest, "wb") as f:
                         for chunk in r.iter_content(chunk_size=32768):
                             if chunk:
                                 f.write(chunk)
-                    sz = os.path.getsize(dest_m4a)
+                    sz = os.path.getsize(preview_dest)
                     if sz > 10000:
                         return {
-                            "file_path": dest_m4a,
+                            "file_path": preview_dest,
                             "filename": f"{clean_name}.m4a",
                             "file_size": sz,
-                            "video_id": video_id or "direct_stream",
+                            "video_id": video_id or "preview_stream",
                             "media_type": "audio/mp4",
                             "cached": False,
+                            "is_preview": True,
                         }
             except Exception as e3:
                 logger.error(f"Fallback stream download failed: {e3}")

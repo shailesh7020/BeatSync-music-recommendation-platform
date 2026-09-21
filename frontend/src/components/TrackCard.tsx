@@ -28,6 +28,7 @@ export const TrackCard: React.FC<TrackCardProps> = ({
 }) => {
   const [isDownloading, setIsDownloading] = useState<boolean>(false);
   const [isSavedOffline, setIsSavedOffline] = useState<boolean>(false);
+  const [downloadMsg, setDownloadMsg] = useState<string | null>(null);
 
   useEffect(() => {
     isTrackDownloaded(track.id || track.spotify_id).then(setIsSavedOffline);
@@ -40,9 +41,13 @@ export const TrackCard: React.FC<TrackCardProps> = ({
     const downloadUrl = api.getDownloadSongUrl(track.artist, track.title, track.youtube_id, track.preview_url);
     const res = await downloadTrackToDevice(track, downloadUrl);
     setIsDownloading(false);
+    setDownloadMsg(res.message);
     if (res.success) {
       setIsSavedOffline(true);
     }
+    setTimeout(() => {
+      setDownloadMsg(null);
+    }, 4500);
   };
 
   const energyPercent = Math.round((track.energy || 0.5) * 100);
@@ -206,24 +211,32 @@ export const TrackCard: React.FC<TrackCardProps> = ({
           <Share2 className="w-3.5 h-3.5" />
         </button>
 
-        <button
-          onClick={handleDownload}
-          disabled={isDownloading}
-          className={`py-1.5 px-2 rounded-lg border text-[11px] font-medium flex items-center justify-center gap-1 transition-colors ${
-            isSavedOffline
-              ? "bg-emerald-600/30 border-emerald-500/50 text-emerald-300 shadow-sm"
-              : "bg-emerald-600/10 hover:bg-emerald-600/20 border border-emerald-500/20 text-emerald-400 hover:text-emerald-300"
-          }`}
-          title={isSavedOffline ? "Saved on device for offline play" : "Download song to your device for offline play"}
-        >
-          {isDownloading ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
-          ) : isSavedOffline ? (
-            <Check className="w-3.5 h-3.5 text-emerald-400" />
-          ) : (
-            <Download className="w-3.5 h-3.5" />
+        <div className="relative">
+          <button
+            onClick={handleDownload}
+            disabled={isDownloading}
+            className={`py-1.5 px-2 rounded-lg border text-[11px] font-medium flex items-center justify-center gap-1 transition-colors ${
+              isSavedOffline
+                ? "bg-emerald-600/30 border-emerald-500/50 text-emerald-300 shadow-sm"
+                : "bg-emerald-600/10 hover:bg-emerald-600/20 border border-emerald-500/20 text-emerald-400 hover:text-emerald-300"
+            }`}
+            title={isSavedOffline ? "Saved on device for offline play" : "Download song to your device for offline play"}
+          >
+            {isDownloading ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+            ) : isSavedOffline ? (
+              <Check className="w-3.5 h-3.5 text-emerald-400" />
+            ) : (
+              <Download className="w-3.5 h-3.5" />
+            )}
+          </button>
+
+          {downloadMsg && (
+            <div className="absolute bottom-full right-0 mb-2 w-52 p-2 bg-zinc-950/95 border border-emerald-500/50 text-emerald-300 text-[10px] leading-tight rounded-xl shadow-2xl z-30 pointer-events-none animate-fade-in backdrop-blur-md">
+              {downloadMsg}
+            </div>
           )}
-        </button>
+        </div>
       </div>
     </div>
   );

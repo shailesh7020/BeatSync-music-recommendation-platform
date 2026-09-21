@@ -203,6 +203,23 @@ export const downloadTrackToDevice = async (
 
     const localUri = Capacitor.convertFileSrc(res.path || relativePath);
 
+    // Measure downloaded file size
+    let sizeMb = "";
+    let isFullSong = true;
+    try {
+      const fileStat = await Filesystem.stat({
+        path: relativePath,
+        directory: Directory.Documents,
+      });
+      if (fileStat.size) {
+        const mb = (fileStat.size / (1024 * 1024)).toFixed(1);
+        sizeMb = `${mb} MB`;
+        isFullSong = fileStat.size >= 1_500_000;
+      }
+    } catch {
+      // stat check optional
+    }
+
     // Register track in offline preferences
     const existing = await getOfflineTracks();
     const filtered = existing.filter((t) => String(t.id) !== String(track.id || `${cleanArtist}-${cleanTitle}`));
@@ -222,9 +239,14 @@ export const downloadTrackToDevice = async (
     });
 
     mobileHaptics.success();
+
+    const successMessage = isFullSong
+      ? `"${track.title}" (${sizeMb || "Full Song"}) saved to phone storage!`
+      : `"${track.title}" (${sizeMb || "Preview"}) saved. Switch to Laptop Server in Settings for 100% full songs.`;
+
     return {
       success: true,
-      message: `"${track.title}" downloaded to your device for offline play!`,
+      message: successMessage,
       localUri,
     };
   } catch (err: any) {
