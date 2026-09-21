@@ -538,7 +538,8 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
                 href={api.getDownloadSongUrl(
                   currentTrack.artist,
                   currentTrack.title,
-                  currentTrack.youtube_id || currentVideoId
+                  currentTrack.youtube_id || currentVideoId,
+                  currentTrack.preview_url
                 )}
                 download
                 className="px-2.5 py-1 rounded-full bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-400 text-xs font-semibold flex items-center gap-1.5 transition-colors"

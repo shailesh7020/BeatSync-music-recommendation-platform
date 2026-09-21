@@ -167,7 +167,7 @@ export const TrackCard: React.FC<TrackCardProps> = ({
         </button>
 
         <a
-          href={api.getDownloadSongUrl(track.artist, track.title, track.youtube_id)}
+          href={api.getDownloadSongUrl(track.artist, track.title, track.youtube_id, track.preview_url)}
           download
           className="py-1.5 px-2 rounded-lg bg-emerald-600/10 hover:bg-emerald-600/20 border border-emerald-500/20 text-[11px] font-medium text-emerald-400 hover:text-emerald-300 flex items-center justify-center gap-1 transition-colors"
           title="Download full song to your laptop for offline play"

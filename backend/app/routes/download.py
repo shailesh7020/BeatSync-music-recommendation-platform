@@ -12,12 +12,15 @@ def download_offline_song(
     artist: str = Query(..., min_length=1, description="Artist name"),
     title: str = Query(..., min_length=1, description="Song title"),
     youtube_id: Optional[str] = Query(None, description="Optional YouTube video ID"),
+    preview_url: Optional[str] = Query(None, description="Optional direct audio preview URL fallback"),
 ):
     """
     Download a full song to the user's laptop for offline playback.
     Returns the audio file directly as a downloadable attachment.
     """
-    result = download_service.download_track(artist=artist, title=title, youtube_id=youtube_id)
+    result = download_service.download_track(
+        artist=artist, title=title, youtube_id=youtube_id, preview_url=preview_url
+    )
     if not result or not os.path.exists(result["file_path"]):
         raise HTTPException(
             status_code=500,
@@ -39,11 +42,14 @@ def stream_audio(
     artist: str = Query(..., min_length=1, description="Artist name"),
     title: str = Query(..., min_length=1, description="Song title"),
     youtube_id: Optional[str] = Query(None, description="Optional YouTube video ID"),
+    preview_url: Optional[str] = Query(None, description="Optional direct audio preview URL fallback"),
 ):
     """
     Stream full song audio directly inline (Content-Disposition: inline) for browser audio players.
     """
-    result = download_service.download_track(artist=artist, title=title, youtube_id=youtube_id)
+    result = download_service.download_track(
+        artist=artist, title=title, youtube_id=youtube_id, preview_url=preview_url
+    )
     if not result or not os.path.exists(result["file_path"]):
         raise HTTPException(
             status_code=500,

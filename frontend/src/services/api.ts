@@ -130,18 +130,34 @@ export const api = {
     }
   },
 
-  getDownloadSongUrl(artist: string, title: string, youtubeId?: string | null): string {
+  getDownloadSongUrl(
+    artist: string,
+    title: string,
+    youtubeId?: string | null,
+    previewUrl?: string | null
+  ): string {
     let url = `${BASE_URL}/download/song?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`;
     if (youtubeId) {
       url += `&youtube_id=${encodeURIComponent(youtubeId)}`;
     }
+    if (previewUrl) {
+      url += `&preview_url=${encodeURIComponent(previewUrl)}`;
+    }
     return url;
   },
 
-  getStreamSongUrl(artist: string, title: string, youtubeId?: string | null): string {
+  getStreamSongUrl(
+    artist: string,
+    title: string,
+    youtubeId?: string | null,
+    previewUrl?: string | null
+  ): string {
     let url = `${BASE_URL}/download/stream?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`;
     if (youtubeId) {
       url += `&youtube_id=${encodeURIComponent(youtubeId)}`;
+    }
+    if (previewUrl) {
+      url += `&preview_url=${encodeURIComponent(previewUrl)}`;
     }
     return url;
   },
