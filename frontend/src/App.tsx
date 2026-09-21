@@ -1,7 +1,13 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Loader2, Music, Sparkles, AlertCircle, Flame } from "lucide-react";
+import { Loader2, Music, Sparkles, AlertCircle, Flame, WifiOff } from "lucide-react";
 import { Track } from "./types/music";
 import { api } from "./services/api";
+import {
+  initMobileApp,
+  mobileHaptics,
+  subscribeNetworkStatus,
+  registerHardwareBackButton,
+} from "./services/mobile";
 import { Navbar } from "./components/Navbar";
 import { CombinedFilterSelector } from "./components/CombinedFilterSelector";
 import { TrackCard } from "./components/TrackCard";
@@ -21,6 +27,15 @@ export const App: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [isSlowLoading, setIsSlowLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [isOnline, setIsOnline] = useState<boolean>(true);
+
+  // Initialize native status bar, splash screen, and network listener
+  useEffect(() => {
+    initMobileApp();
+    return subscribeNetworkStatus((connected) => {
+      setIsOnline(connected);
+    });
+  }, []);
 
   useEffect(() => {
     let t: any;
@@ -99,7 +114,52 @@ export const App: React.FC = () => {
     }
   }, [searchQuery, activeTab, fetchTracks]);
 
+  // Hardware back button state ref for synchronous handler checks
+  const navStateRef = useRef({
+    isPromptModalOpen,
+    similarModalTrack,
+    isSocialRoomOpen,
+    showVideo,
+    activeTab,
+  });
+  navStateRef.current = {
+    isPromptModalOpen,
+    similarModalTrack,
+    isSocialRoomOpen,
+    showVideo,
+    activeTab,
+  };
+
+  useEffect(() => {
+    return registerHardwareBackButton(() => {
+      const state = navStateRef.current;
+      if (state.isPromptModalOpen) {
+        setIsPromptModalOpen(false);
+        return true;
+      }
+      if (state.similarModalTrack) {
+        setSimilarModalTrack(null);
+        return true;
+      }
+      if (state.isSocialRoomOpen) {
+        setIsSocialRoomOpen(false);
+        return true;
+      }
+      if (state.showVideo) {
+        setShowVideo(false);
+        return true;
+      }
+      if (state.activeTab === "search") {
+        setActiveTab("popular");
+        setSearchQuery("");
+        return true;
+      }
+      return false; // let system minimize app
+    });
+  }, []);
+
   const handlePlayTrack = (track: Track) => {
+    mobileHaptics.light();
     if (currentTrack?.spotify_id === track.spotify_id) {
       setIsPlaying(!isPlaying);
     } else {
@@ -113,6 +173,7 @@ export const App: React.FC = () => {
   };
 
   const handleWatchVideo = (track: Track) => {
+    mobileHaptics.light();
     setCurrentTrack(track);
     setIsPlaying(true);
     setShowVideo(true);
@@ -123,6 +184,7 @@ export const App: React.FC = () => {
 
   const handleToggleLike = async (track: Track) => {
     if (!track.id) return;
+    mobileHaptics.medium();
     try {
       const res = await api.toggleLike(1, track.id);
       setLikedSongIds((prev) => {
@@ -190,7 +252,15 @@ export const App: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-spotify-black text-white flex flex-col pb-28">
+    <div className="min-h-screen bg-spotify-black text-white flex flex-col pb-[calc(7rem+env(safe-area-inset-bottom,0px))] relative">
+      {/* Real-time Mobile Network Status Notification */}
+      {!isOnline && (
+        <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 px-4 py-1.5 rounded-full bg-amber-500 text-black text-xs font-extrabold shadow-2xl flex items-center gap-2 animate-bounce border border-black/20">
+          <WifiOff className="w-3.5 h-3.5 text-black" />
+          <span>Offline Mode — playing cached & offline songs</span>
+        </div>
+      )}
+
       <Navbar
         searchQuery={searchQuery}
         onSearchChange={(q) => setSearchQuery(q)}

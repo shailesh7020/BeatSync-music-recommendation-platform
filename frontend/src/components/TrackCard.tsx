@@ -1,7 +1,8 @@
 import React from "react";
-import { Play, Pause, Sparkles, Youtube, Disc3, Heart, Download } from "lucide-react";
+import { Play, Pause, Sparkles, Youtube, Disc3, Heart, Download, Share2 } from "lucide-react";
 import { Track } from "../types/music";
 import { api } from "../services/api";
+import { shareMedia } from "../services/mobile";
 
 
 interface TrackCardProps {
@@ -166,11 +167,26 @@ export const TrackCard: React.FC<TrackCardProps> = ({
           <span className="hidden sm:inline">Video</span>
         </button>
 
+        <button
+          onClick={() => {
+            const url = `https://beatsync-music.web.app/?track=${encodeURIComponent(track.spotify_id)}`;
+            shareMedia(
+              `${track.title} by ${track.artist}`,
+              `Check out "${track.title}" by ${track.artist} on BeatSync AI Music!`,
+              url
+            );
+          }}
+          className="py-1.5 px-2 rounded-lg bg-zinc-800/80 hover:bg-zinc-700 border border-zinc-700/60 text-[11px] font-medium text-zinc-400 hover:text-white flex items-center justify-center transition-colors"
+          title="Share song via native share sheet"
+        >
+          <Share2 className="w-3.5 h-3.5" />
+        </button>
+
         <a
           href={api.getDownloadSongUrl(track.artist, track.title, track.youtube_id, track.preview_url)}
           download
           className="py-1.5 px-2 rounded-lg bg-emerald-600/10 hover:bg-emerald-600/20 border border-emerald-500/20 text-[11px] font-medium text-emerald-400 hover:text-emerald-300 flex items-center justify-center gap-1 transition-colors"
-          title="Download full song to your laptop for offline play"
+          title="Download full song to your device for offline play"
         >
           <Download className="w-3.5 h-3.5" />
         </a>

@@ -6,7 +6,16 @@ import {
   RecommendationResponse,
   PromptPlaylistResponse,
 } from "../types/music";
-const API_ORIGIN = import.meta.env.VITE_API_BASE_URL || "";
+import { Capacitor } from "@capacitor/core";
+
+const DEFAULT_CLOUD_API = "https://beatsync-backend-jcyl.onrender.com";
+const ENV_ORIGIN = import.meta.env.VITE_API_BASE_URL;
+
+// On native Android/iOS mobile devices, requests must target the cloud backend host
+const API_ORIGIN = ENV_ORIGIN !== undefined
+  ? ENV_ORIGIN
+  : (Capacitor.isNativePlatform() ? DEFAULT_CLOUD_API : "");
+
 const BASE_URL = API_ORIGIN ? `${API_ORIGIN.replace(/\/+$/, "")}/api/v1` : "/api/v1";
 
 // In-memory client cache to eliminate redundant network roundtrips

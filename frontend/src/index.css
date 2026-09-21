@@ -2,6 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Mobile Safe Area & Touch Ergonomics */
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
+
+html, body {
+  overscroll-behavior-y: contain;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
 /* Custom smooth dark scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
@@ -24,4 +38,13 @@
 /* Range input styling */
 input[type="range"] {
   accent-color: #1DB954;
+}
+
+/* Safe area padding utilities */
+.pt-safe {
+  padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
+}
+
+.pb-safe {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
 }

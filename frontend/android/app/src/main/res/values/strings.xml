@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">BeatSync</string>
+    <string name="title_activity_main">BeatSync</string>
+    <string name="package_name">com.beatsync.music</string>
+    <string name="custom_url_scheme">com.beatsync.music</string>
+</resources>

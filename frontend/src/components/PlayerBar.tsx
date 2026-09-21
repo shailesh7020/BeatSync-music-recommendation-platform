@@ -401,7 +401,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
       </div>
 
       {/* Persistent Bottom Player Bar */}
-      <footer className="fixed bottom-0 left-0 right-0 z-40 h-20 bg-spotify-black/95 backdrop-blur-lg border-t border-spotify-divider px-3 sm:px-6 flex items-center justify-between shadow-2xl">
+      <footer className="fixed bottom-0 left-0 right-0 z-40 h-[calc(5rem+env(safe-area-inset-bottom,0px))] pb-[env(safe-area-inset-bottom,0px)] bg-spotify-black/95 backdrop-blur-lg border-t border-spotify-divider px-3 sm:px-6 flex items-center justify-between shadow-2xl">
         {/* Left: Track Details & Badges */}
         <div className="flex items-center gap-2.5 sm:gap-3 w-1/3 sm:w-1/4 min-w-[120px] sm:min-w-[180px]">
           {currentTrack ? (
