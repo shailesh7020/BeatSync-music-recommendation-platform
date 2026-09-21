@@ -31,12 +31,14 @@ export const TrackCard: React.FC<TrackCardProps> = ({
   const valencePercent = Math.round((track.valence || 0.5) * 100);
 
   return (
-    <div className="group relative bg-spotify-surface/80 hover:bg-spotify-card p-3.5 rounded-xl border border-spotify-divider/60 hover:border-spotify-divider transition-all duration-300 hover:shadow-xl hover:shadow-black/60 flex flex-col justify-between">
+    <div
+      onClick={() => onPlay(track)}
+      className="group relative bg-spotify-surface/80 hover:bg-spotify-card p-3.5 rounded-xl border border-spotify-divider/60 hover:border-spotify-divider transition-all duration-300 hover:shadow-xl hover:shadow-black/60 flex flex-col justify-between cursor-pointer"
+    >
       <div>
         {/* Cover Art Container */}
         <div
-          onClick={() => onPlay(track)}
-          className="relative aspect-square w-full rounded-lg overflow-hidden mb-3 bg-zinc-900 shadow-md cursor-pointer"
+          className="relative aspect-square w-full rounded-lg overflow-hidden mb-3 bg-zinc-900 shadow-md"
         >
           {track.image_url ? (
             <img
@@ -148,7 +150,10 @@ export const TrackCard: React.FC<TrackCardProps> = ({
       </div>
 
       {/* Action Buttons */}
-      <div className="mt-3.5 pt-2 flex items-center justify-between gap-1.5">
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="mt-3.5 pt-2 flex items-center justify-between gap-1.5"
+      >
         <button
           onClick={() => onFindSimilar(track)}
           className="flex-1 py-1.5 px-2 rounded-lg bg-spotify-surface hover:bg-zinc-800 border border-spotify-divider/80 text-[11px] font-medium text-zinc-300 hover:text-white flex items-center justify-center gap-1.5 transition-colors"
