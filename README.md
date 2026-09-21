@@ -89,3 +89,35 @@ pytest test/ -v
 ```
 
 All 27 automated tests pass with 100% success.
+
+---
+
+## 📱 Native Mobile Applications (Android & iOS)
+
+BeatSync can be run and compiled as a native Android or iOS application using Capacitor without code duplication:
+
+### 1. Build and Sync Mobile Assets
+```bash
+cd frontend
+npm run build:mobile
+```
+
+### 2. Android (Google Play & APK)
+- To open in **Android Studio**:
+  ```bash
+  npm run cap:android
+  ```
+- Build debug APK via Gradle:
+  ```bash
+  cd frontend/android
+  ./gradlew assembleDebug
+  ```
+  The APK is generated at `frontend/android/app/build/outputs/apk/debug/app-debug.apk`.
+
+### 3. iOS (Apple App Store & TestFlight)
+- To open in **Xcode** (macOS required):
+  ```bash
+  npm run cap:ios
+  ```
+- Choose your simulator or connected iPhone and press `Cmd + R` to run.
+
