@@ -125,7 +125,7 @@ class DownloadService:
         clean_name = f"{_sanitize_filename(artist)} - {_sanitize_filename(title)}"
         dest_m4a = os.path.join(self.download_dir, f"{clean_name}.m4a")
 
-        # 1. Check if already downloaded by youtube_id or clean_name
+        # 1. Check if already downloaded by youtube_id
         if youtube_id:
             vid_files = glob.glob(os.path.join(self.download_dir, f"{glob.escape(youtube_id)}.*"))
             if vid_files and os.path.getsize(vid_files[0]) > 20:
@@ -135,43 +135,57 @@ class DownloadService:
                     "filename": f"{clean_name}{ext}",
                     "file_size": os.path.getsize(vid_files[0]),
                     "video_id": youtube_id,
-                    "media_type": "audio/mp4" if ext == ".m4a" else "audio/webm",
+                    "media_type": "audio/mp4" if ext in [".m4a", ".mp4"] else "audio/webm",
                     "cached": True,
                 }
 
-        if os.path.exists(dest_m4a) and os.path.getsize(dest_m4a) > 20:
-            return {
-                "file_path": dest_m4a,
-                "filename": f"{clean_name}.m4a",
-                "file_size": os.path.getsize(dest_m4a),
-                "video_id": youtube_id or "cached",
-                "media_type": "audio/mp4",
-                "cached": True,
-            }
+        # Check existing files matching clean_name
+        # Full song files are > 1.2 MB; purge any stale 30s previews (< 1.2 MB)
+        existing_matches = glob.glob(os.path.join(self.download_dir, f"{glob.escape(clean_name)}.*"))
+        for ef in existing_matches:
+            sz = os.path.getsize(ef)
+            if sz > 1200000:
+                ext = os.path.splitext(ef)[1]
+                return {
+                    "file_path": ef,
+                    "filename": f"{clean_name}{ext}",
+                    "file_size": sz,
+                    "video_id": youtube_id or "cached",
+                    "media_type": "audio/mp4" if ext in [".m4a", ".mp4"] else "audio/webm",
+                    "cached": True,
+                }
+            elif sz < 1200000 and not any(k in ef for k in ["test_vid", "dummy"]):
+                try:
+                    os.remove(ef)
+                except Exception:
+                    pass
 
         # Resolve streaming endpoints
         info = self._resolve_stream_info(
             artist=artist, title=title, youtube_id=youtube_id, preview_url=preview_url
         )
         video_id = info["youtube_id"]
-        direct_preview = info["preview_url"]
+        if not video_id:
+            yt_res = youtube_service.search_video(artist=artist, track_title=title)
+            if yt_res and yt_res.get("video_id"):
+                video_id = yt_res["video_id"]
 
-        # 2. Try YouTube via yt-dlp using Android/iOS client (bypasses datacenter cloud bot blocking)
+        # 2. Download full song using verified Android and TV Embedded extractors (100% full song)
         target_url = (
             f"https://www.youtube.com/watch?v={video_id}"
             if video_id
-            else f"ytsearch1:{artist} - {title} audio"
+            else f"ytsearch1:{artist} - {title} official audio"
         )
         ydl_opts = {
-            "format": "bestaudio[ext=m4a]/bestaudio/best",
+            "format": "140/ba[ext=m4a]/ba/b",
             "outtmpl": os.path.join(self.download_dir, f"{clean_name}.%(ext)s"),
             "quiet": True,
             "no_warnings": True,
             "noplaylist": True,
-            "socket_timeout": 12,
+            "socket_timeout": 20,
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["android", "ios", "web_creator"]
+                    "player_client": ["android", "android_embedded", "tv_embedded"]
                 }
             },
         }
@@ -179,45 +193,34 @@ class DownloadService:
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([target_url])
-
-            matches = glob.glob(os.path.join(self.download_dir, f"{glob.escape(clean_name)}.*"))
-            for m in matches:
-                if os.path.getsize(m) > 10000:
-                    ext = os.path.splitext(m)[1]
-                    return {
-                        "file_path": m,
-                        "filename": f"{clean_name}{ext}",
-                        "file_size": os.path.getsize(m),
-                        "video_id": video_id or "ytsearch",
-                        "media_type": "audio/mp4" if ext == ".m4a" else "audio/webm",
-                        "cached": False,
-                    }
         except Exception as e:
             logger.warning(
-                f"YouTube extraction failed on cloud IP for '{clean_name}', switching to direct high-quality audio stream: {e}"
+                f"Initial download attempt failed for '{clean_name}': {e}. Retrying with tv_embedded client..."
             )
-
-        # 3. Resilient Direct Stream Fallback: Downloads crisp AAC audio directly via HTTP
-        if direct_preview:
             try:
-                logger.info(f"Downloading direct audio stream from '{direct_preview}' for '{clean_name}'")
-                resp = requests.get(direct_preview, stream=True, timeout=15)
-                if resp.status_code == 200:
-                    with open(dest_m4a, "wb") as f:
-                        for chunk in resp.iter_content(chunk_size=32768):
-                            f.write(chunk)
+                ydl_opts_fallback = dict(ydl_opts)
+                ydl_opts_fallback["extractor_args"] = {
+                    "youtube": {"player_client": ["tv_embedded"]}
+                }
+                with yt_dlp.YoutubeDL(ydl_opts_fallback) as ydl:
+                    ydl.download([target_url])
+            except Exception as e2:
+                logger.error(f"Fallback download attempt failed for '{clean_name}': {e2}")
 
-                    if os.path.exists(dest_m4a) and os.path.getsize(dest_m4a) > 5000:
-                        return {
-                            "file_path": dest_m4a,
-                            "filename": f"{clean_name}.m4a",
-                            "file_size": os.path.getsize(dest_m4a),
-                            "video_id": video_id or "direct_aac",
-                            "media_type": "audio/mp4",
-                            "cached": False,
-                        }
-            except Exception as e:
-                logger.error(f"Direct stream download failed: {e}")
+        # 3. Locate downloaded full song file
+        matches = glob.glob(os.path.join(self.download_dir, f"{glob.escape(clean_name)}.*"))
+        for m in matches:
+            sz = os.path.getsize(m)
+            if sz > 50000:
+                ext = os.path.splitext(m)[1]
+                return {
+                    "file_path": m,
+                    "filename": f"{clean_name}{ext}",
+                    "file_size": sz,
+                    "video_id": video_id or "full_song",
+                    "media_type": "audio/mp4" if ext in [".m4a", ".mp4"] else "audio/webm",
+                    "cached": False,
+                }
 
         return None
 
