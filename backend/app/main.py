@@ -39,6 +39,22 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 from app.routes.rooms import room_websocket_endpoint
 app.add_api_websocket_route("/ws/room/{room_id}", room_websocket_endpoint)
 
+from fastapi.responses import FileResponse
+
+@app.get("/download-app")
+def download_mobile_app():
+    root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    apk_path = os.path.join(root_dir, "BeatSync.apk")
+    if not os.path.exists(apk_path):
+        apk_path = os.path.join(root_dir, "frontend", "android", "app", "build", "outputs", "apk", "debug", "app-debug.apk")
+    if os.path.exists(apk_path):
+        return FileResponse(
+            path=apk_path,
+            filename="BeatSync.apk",
+            media_type="application/vnd.android.package-archive"
+        )
+    return {"error": "APK not found. Please build the APK first."}
+
 # Serve built frontend static files if present (for single-service all-in-one cloud deployments)
 static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
 if os.path.exists(static_dir) and os.path.isdir(static_dir):
@@ -50,5 +66,6 @@ else:
             "message": f"Welcome to {settings.PROJECT_NAME} API",
             "docs": f"{settings.API_V1_STR}/docs",
             "health": f"{settings.API_V1_STR}/health",
+            "mobile_app": "/download-app",
         }
 
