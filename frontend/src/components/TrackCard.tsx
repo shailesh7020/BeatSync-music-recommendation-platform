@@ -1,8 +1,8 @@
-import React from "react";
-import { Play, Pause, Sparkles, Youtube, Disc3, Heart, Download, Share2 } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Play, Pause, Sparkles, Youtube, Disc3, Heart, Download, Share2, Check, Loader2 } from "lucide-react";
 import { Track } from "../types/music";
 import { api } from "../services/api";
-import { shareMedia } from "../services/mobile";
+import { shareMedia, downloadTrackToDevice, isTrackDownloaded } from "../services/mobile";
 
 
 interface TrackCardProps {
@@ -26,6 +26,25 @@ export const TrackCard: React.FC<TrackCardProps> = ({
   onWatchVideo,
   onToggleLike,
 }) => {
+  const [isDownloading, setIsDownloading] = useState<boolean>(false);
+  const [isSavedOffline, setIsSavedOffline] = useState<boolean>(false);
+
+  useEffect(() => {
+    isTrackDownloaded(track.id || track.spotify_id).then(setIsSavedOffline);
+  }, [track.id, track.spotify_id]);
+
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setIsDownloading(true);
+    const downloadUrl = api.getDownloadSongUrl(track.artist, track.title, track.youtube_id, track.preview_url);
+    const res = await downloadTrackToDevice(track, downloadUrl);
+    setIsDownloading(false);
+    if (res.success) {
+      setIsSavedOffline(true);
+    }
+  };
+
   const energyPercent = Math.round((track.energy || 0.5) * 100);
   const dancePercent = Math.round((track.danceability || 0.5) * 100);
   const valencePercent = Math.round((track.valence || 0.5) * 100);
@@ -187,14 +206,24 @@ export const TrackCard: React.FC<TrackCardProps> = ({
           <Share2 className="w-3.5 h-3.5" />
         </button>
 
-        <a
-          href={api.getDownloadSongUrl(track.artist, track.title, track.youtube_id, track.preview_url)}
-          download
-          className="py-1.5 px-2 rounded-lg bg-emerald-600/10 hover:bg-emerald-600/20 border border-emerald-500/20 text-[11px] font-medium text-emerald-400 hover:text-emerald-300 flex items-center justify-center gap-1 transition-colors"
-          title="Download full song to your device for offline play"
+        <button
+          onClick={handleDownload}
+          disabled={isDownloading}
+          className={`py-1.5 px-2 rounded-lg border text-[11px] font-medium flex items-center justify-center gap-1 transition-colors ${
+            isSavedOffline
+              ? "bg-emerald-600/30 border-emerald-500/50 text-emerald-300 shadow-sm"
+              : "bg-emerald-600/10 hover:bg-emerald-600/20 border border-emerald-500/20 text-emerald-400 hover:text-emerald-300"
+          }`}
+          title={isSavedOffline ? "Saved on device for offline play" : "Download song to your device for offline play"}
         >
-          <Download className="w-3.5 h-3.5" />
-        </a>
+          {isDownloading ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+          ) : isSavedOffline ? (
+            <Check className="w-3.5 h-3.5 text-emerald-400" />
+          ) : (
+            <Download className="w-3.5 h-3.5" />
+          )}
+        </button>
       </div>
     </div>
   );
