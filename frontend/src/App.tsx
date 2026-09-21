@@ -19,7 +19,18 @@ export const App: React.FC = () => {
 
   const [tracks, setTracks] = useState<Track[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [isSlowLoading, setIsSlowLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let t: any;
+    if (loading) {
+      t = setTimeout(() => setIsSlowLoading(true), 3000);
+    } else {
+      setIsSlowLoading(false);
+    }
+    return () => clearTimeout(t);
+  }, [loading]);
 
   // Likes state
   const [likedSongIds, setLikedSongIds] = useState<Set<number>>(new Set());
@@ -258,9 +269,14 @@ export const App: React.FC = () => {
 
         {/* Content Section */}
         {loading ? (
-          <div className="py-24 flex flex-col items-center justify-center gap-3 text-spotify-muted">
+          <div className="py-24 flex flex-col items-center justify-center gap-3 text-spotify-muted text-center px-4">
             <Loader2 className="w-9 h-9 animate-spin text-spotify-green" />
             <p className="text-sm font-medium">Scoring music catalog with vector similarity...</p>
+            {isSlowLoading && (
+              <p className="text-xs text-amber-400/90 max-w-sm animate-pulse">
+                Connecting to cloud server (Render free tier wakes up after 15 min of inactivity)... almost ready!
+              </p>
+            )}
           </div>
         ) : error ? (
           <div className="py-16 flex flex-col items-center justify-center gap-2 text-center text-red-400">

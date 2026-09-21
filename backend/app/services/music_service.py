@@ -142,9 +142,21 @@ class MusicService:
         """
         Resolve YouTube video playback for an audio track and cache the youtube_id in DB.
         """
-        # Check if DB already has the youtube_id cached for this track
-        if db and spotify_id:
-            song = db.query(Song).filter(Song.spotify_id == spotify_id).first()
+        # 1. Check if DB already has the youtube_id cached for this track
+        if db:
+            song = None
+            if spotify_id:
+                song = db.query(Song).filter(Song.spotify_id == spotify_id).first()
+            if not song or not song.youtube_id:
+                song = (
+                    db.query(Song)
+                    .filter(
+                        Song.artist.ilike(f"%{artist.strip()}%"),
+                        Song.title.ilike(f"%{title.strip()}%"),
+                        Song.youtube_id.isnot(None),
+                    )
+                    .first()
+                )
             if song and song.youtube_id:
                 vid = song.youtube_id
                 return {
@@ -155,13 +167,24 @@ class MusicService:
                     "cached_in_db": True,
                 }
 
-        # Resolve via YouTube API
+        # 2. Resolve via YouTube API or zero-credential scraper
         yt_info = self.youtube.search_video(artist=artist, track_title=title)
         if yt_info:
-            # Update DB record with youtube_id if available
-            if db and spotify_id:
+            # Cache youtube_id into DB record for subsequent instant lookups
+            if db:
                 try:
-                    song = db.query(Song).filter(Song.spotify_id == spotify_id).first()
+                    song = None
+                    if spotify_id:
+                        song = db.query(Song).filter(Song.spotify_id == spotify_id).first()
+                    if not song:
+                        song = (
+                            db.query(Song)
+                            .filter(
+                                Song.artist.ilike(f"%{artist.strip()}%"),
+                                Song.title.ilike(f"%{title.strip()}%"),
+                            )
+                            .first()
+                        )
                     if song:
                         song.youtube_id = yt_info["video_id"]
                         db.commit()

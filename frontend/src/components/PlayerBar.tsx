@@ -57,6 +57,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
   }, [isAutoplay]);
 
   const autoAdvanceTriggeredRef = useRef<boolean>(false);
+  const pendingVideoIdRef = useRef<string | null>(null);
 
   const [playMode, setPlayMode] = useState<"full" | "preview">("full");
   const [currentVideoId, setCurrentVideoId] = useState<string | null>(null);
@@ -88,6 +89,12 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
           events: {
             onReady: (event: any) => {
               event.target.setVolume(volume * 100);
+              if (pendingVideoIdRef.current) {
+                event.target.loadVideoById(pendingVideoIdRef.current);
+                if (isPlaying) {
+                  event.target.playVideo();
+                }
+              }
             },
             onStateChange: (event: any) => {
               // 1 = PLAYING, 2 = PAUSED, 0 = ENDED
@@ -179,6 +186,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
 
         if (vid) {
           setCurrentVideoId(vid);
+          pendingVideoIdRef.current = vid;
           if (ytPlayerRef.current?.loadVideoById) {
             ytPlayerRef.current.loadVideoById(vid);
             ytPlayerRef.current.setVolume(isMuted ? 0 : volume * 100);
@@ -353,7 +361,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
         className={
           showVideo && currentTrack
             ? "fixed bottom-22 sm:bottom-24 right-3 sm:right-6 left-3 sm:left-auto max-w-[calc(100vw-1.5rem)] sm:w-96 z-50 bg-spotify-surface border border-spotify-divider rounded-2xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-5 duration-300"
-            : "fixed -bottom-[700px] -right-[700px] w-1 h-1 opacity-0 pointer-events-none"
+            : "fixed bottom-0 right-0 w-64 h-36 -z-50 pointer-events-none opacity-0 overflow-hidden"
         }
       >
         {/* Floating Mini Player Header */}
